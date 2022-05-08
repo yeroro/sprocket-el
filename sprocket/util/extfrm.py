@@ -34,4 +34,6 @@ def extfrm(data, npow, power_threshold=-20):
     extdata = data[valid_index]
     assert extdata.shape[0] <= T
 
+    print('Extracted {}/{} non-silent frames'.format(extdata.shape[0], T))
+
     return extdata

@@ -2,9 +2,11 @@
 
 import pyworld
 
+from scipy import signal
+
 
 class WORLD(object):
-    """WORLD-based speech analyzer
+  """WORLD-based speech analyzer
 
     Parameters
     ----------
@@ -25,15 +27,24 @@ class WORLD(object):
         Default set to 500
     """
 
-    def __init__(self, fs=16000, fftl=1024, shiftms=5.0, minf0=40.0, maxf0=500.0):
-        self.fs = fs
-        self.fftl = fftl
-        self.shiftms = shiftms
-        self.minf0 = minf0
-        self.maxf0 = maxf0
+  def __init__(self,
+               fs=16000,
+               fftl=1024,
+               shiftms=5.0,
+               minf0=40.0,
+               maxf0=500.0,
+               med_filter_kernel=0,
+               f0_fake=None):
+    self.fs = fs
+    self.fftl = fftl
+    self.shiftms = shiftms
+    self.minf0 = minf0
+    self.maxf0 = maxf0
+    self.med_filter_kernel = med_filter_kernel
+    self.f0_fake = f0_fake
 
-    def analyze(self, x):
-        """Analyze acoustic features based on WORLD
+  def analyze(self, x):
+    """Analyze acoustic features based on WORLD
 
         analyze F0, spectral envelope, aperiodicity
 
@@ -52,17 +63,32 @@ class WORLD(object):
             aperiodicity sequence
 
         """
-        f0, time_axis = pyworld.harvest(x, self.fs, f0_floor=self.minf0,
-                                        f0_ceil=self.maxf0, frame_period=self.shiftms)
-        spc = pyworld.cheaptrick(x, f0, time_axis, self.fs,
-                                 fft_size=self.fftl)
-        ap = pyworld.d4c(x, f0, time_axis, self.fs, fft_size=self.fftl)
+    f0, time_axis = pyworld.harvest(
+        x,
+        self.fs,
+        f0_floor=self.minf0,
+        f0_ceil=self.maxf0,
+        frame_period=self.shiftms)
 
-        assert spc.shape == ap.shape
-        return f0, spc, ap
+    if self.f0_fake is not None:
+      # TODO(yero): Consider using f0_fake only when f0 is non-zero.
+      print("Using fake F0 {:.2f}".format(self.f0_fake))
+      f0.fill(self.f0_fake)
+    elif self.med_filter_kernel > 0:
+      print("Using median filter of kernel size {}".format(
+          self.med_filter_kernel))
+      f0 = signal.medfilt(f0, self.med_filter_kernel)
 
-    def analyze_f0(self, x):
-        """Analyze decomposes a speech signal into F0:
+    spc = pyworld.cheaptrick(x, f0, time_axis, self.fs, fft_size=self.fftl)
+
+    ap = pyworld.d4c(
+        x, f0, time_axis, self.fs, fft_size=self.fftl, threshold=0.0)
+
+    assert spc.shape == ap.shape
+    return f0, spc, ap
+
+  def analyze_f0(self, x):
+    """Analyze decomposes a speech signal into F0:
 
         Paramters
         ---------
@@ -76,13 +102,17 @@ class WORLD(object):
 
         """
 
-        f0, time_axis = pyworld.harvest(x, self.fs, f0_floor=self.minf0,
-                                        f0_ceil=self.maxf0, frame_period=self.shiftms)
+    f0, time_axis = pyworld.harvest(
+        x,
+        self.fs,
+        f0_floor=self.minf0,
+        f0_ceil=self.maxf0,
+        frame_period=self.shiftms)
 
-        return f0
+    return f0
 
-    def synthesis(self, f0, spc, ap):
-        """Synthesis re-synthesizes a speech waveform from:
+  def synthesis(self, f0, spc, ap):
+    """Synthesis re-synthesizes a speech waveform from:
 
         Parameters
         ----------
@@ -95,4 +125,4 @@ class WORLD(object):
 
         """
 
-        return pyworld.synthesize(f0, spc, ap, self.fs, frame_period=self.shiftms)
+    return pyworld.synthesize(f0, spc, ap, self.fs, frame_period=self.shiftms)

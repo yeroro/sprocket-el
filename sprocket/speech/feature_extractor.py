@@ -9,8 +9,7 @@ from .parameterizer import spc2npow
 
 
 class FeatureExtractor(object):
-
-    """Analyze and synthesize acoustic features from a waveform
+  """Analyze and synthesize acoustic features from a waveform
 
     Extract several types of acoustic features such as F0, aperiodicity,
     spectral envelope, from a given waveform.
@@ -36,36 +35,50 @@ class FeatureExtractor(object):
     maxf0 : float, optional
         Ceil value for F0 estimation
         Default set to 500
+    med_filter_kernel: int, optional
+        If > 0, kernel size of the median filter applied to f0 
+    f0_fake: float, optional
+        Fake f0 value. Will overwrite f0s analyzed.
 
     """
 
-    def __init__(self, analyzer='world', fs=16000, fftl=1024, shiftms=5,
-                 minf0=50, maxf0=500):
-        self.analyzer = analyzer
-        self.fs = fs
-        self.fftl = fftl
-        self.shiftms = shiftms
-        self.minf0 = minf0
-        self.maxf0 = maxf0
+  def __init__(self,
+               analyzer='world',
+               fs=16000,
+               fftl=1024,
+               shiftms=5,
+               minf0=50,
+               maxf0=500,
+               med_filter_kernel=0,
+               f0_fake=None):
+    self.analyzer = analyzer
+    self.fs = fs
+    self.fftl = fftl
+    self.shiftms = shiftms
+    self.minf0 = minf0
+    self.maxf0 = maxf0
+    self.med_filter_kernel = med_filter_kernel
+    self.f0_fake = f0_fake
 
-        # analyzer setting
-        if self.analyzer == 'world':
-            self.analyzer = WORLD(fs=self.fs,
-                                  fftl=self.fftl,
-                                  minf0=self.minf0,
-                                  maxf0=self.maxf0,
-                                  shiftms=self.shiftms
-                                  )
-        else:
-            raise(
-                'Other analyzer does not support, please use "world" instead')
+    # analyzer setting
+    if self.analyzer == 'world':
+      self.analyzer = WORLD(
+          fs=self.fs,
+          fftl=self.fftl,
+          minf0=self.minf0,
+          maxf0=self.maxf0,
+          shiftms=self.shiftms,
+          med_filter_kernel=self.med_filter_kernel,
+          f0_fake=self.f0_fake)
+    else:
+      raise ('Other analyzer does not support, please use "world" instead')
 
-        self._f0 = None
-        self._spc = None
-        self._ap = None
+    self._f0 = None
+    self._spc = None
+    self._ap = None
 
-    def analyze(self, x):
-        """Analyze acoustic features using analyzer
+  def analyze(self, x):
+    """Analyze acoustic features using analyzer
 
         Parameters
         ----------
@@ -82,19 +95,19 @@ class FeatureExtractor(object):
             aperiodicity sequence
         """
 
-        self.x = np.array(x, dtype=np.float)
-        self._f0, self._spc, self._ap = self.analyzer.analyze(self.x)
+    self.x = np.array(x, dtype=np.float)
+    self._f0, self._spc, self._ap = self.analyzer.analyze(self.x)
 
-        # check non-negative for F0
-        self._f0[self._f0 < 0] = 0
+    # check non-negative for F0
+    self._f0[self._f0 < 0] = 0
 
-        if np.sum(self._f0) == 0.0:
-            print("WARNING: F0 values are all zero.")
+    if np.sum(self._f0) == 0.0:
+      print("WARNING: F0 values are all zero.")
 
-        return self._f0, self._spc, self._ap
+    return self._f0, self._spc, self._ap
 
-    def analyze_f0(self, x):
-        """Analyze F0 using analyzer
+  def analyze_f0(self, x):
+    """Analyze F0 using analyzer
 
         Parameters
         ----------
@@ -107,19 +120,19 @@ class FeatureExtractor(object):
             F0 sequence
         """
 
-        self.x = np.array(x, dtype=np.float)
-        self._f0 = self.analyzer.analyze_f0(self.x)
+    self.x = np.array(x, dtype=np.float)
+    self._f0 = self.analyzer.analyze_f0(self.x)
 
-        # check non-negative for F0
-        self._f0[self._f0 < 0] = 0
+    # check non-negative for F0
+    self._f0[self._f0 < 0] = 0
 
-        if np.sum(self._f0) == 0.0:
-            print("WARNING: F0 values are all zero.")
+    if np.sum(self._f0) == 0.0:
+      print("WARNING: F0 values are all zero.")
 
-        return self._f0
+    return self._f0
 
-    def mcep(self, dim=24, alpha=0.42):
-        """Return mel-cepstrum sequence parameterized from spectral envelope
+  def mcep(self, dim=24, alpha=0.42):
+    """Return mel-cepstrum sequence parameterized from spectral envelope
 
         Parameters
         ----------
@@ -134,12 +147,12 @@ class FeatureExtractor(object):
             Mel-cepstrum sequence
 
         """
-        self._analyzed_check()
+    self._analyzed_check()
 
-        return pysptk.sp2mc(self._spc, dim, alpha)
+    return pysptk.sp2mc(self._spc, dim, alpha)
 
-    def codeap(self):
-        """Return coded aperiodicity sequence
+  def codeap(self):
+    """Return coded aperiodicity sequence
 
         Returns
         -------
@@ -152,12 +165,12 @@ class FeatureExtractor(object):
             fs = `48000` : `5`
         """
 
-        self._analyzed_check()
+    self._analyzed_check()
 
-        return pyworld.code_aperiodicity(self._ap, self.fs)
+    return pyworld.code_aperiodicity(self._ap, self.fs)
 
-    def npow(self):
-        """Return normalized power sequence parameterized from spectral envelope
+  def npow(self):
+    """Return normalized power sequence parameterized from spectral envelope
 
         Returns
         -------
@@ -165,10 +178,11 @@ class FeatureExtractor(object):
             Normalized power sequence of the given waveform
 
         """
-        self._analyzed_check()
+    self._analyzed_check()
 
-        return spc2npow(self._spc)
+    return spc2npow(self._spc)
 
-    def _analyzed_check(self):
-        if self._f0 is None and self._spc is None and self._ap is None:
-            raise('Call FeatureExtractor.analyze() before get parameterized features.')
+  def _analyzed_check(self):
+    if self._f0 is None and self._spc is None and self._ap is None:
+      raise (
+          'Call FeatureExtractor.analyze() before get parameterized features.')
