@@ -12,6 +12,7 @@ import sys
 
 import numpy as np
 from scipy.io import wavfile
+from scipy import signal
 
 from sprocket.speech import FeatureExtractor, Synthesizer
 from sprocket.util import HDF5
@@ -54,7 +55,9 @@ def main(*argv):
                             fftl=sconf.wav_fftl,
                             shiftms=sconf.wav_shiftms,
                             minf0=sconf.f0_minf0,
-                            maxf0=sconf.f0_maxf0)
+                            maxf0=sconf.f0_maxf0,
+                            med_filter_kernel=sconf.med_filter_kernel,
+                            f0_fake=sconf.f0_fake)
 
     # constract Synthesizer class
     synthesizer = Synthesizer(fs=sconf.wav_fs,
@@ -78,6 +81,7 @@ def main(*argv):
 
                 # analyze F0, spc, and ap
                 f0, spc, ap = feat.analyze(x)
+
                 mcep = feat.mcep(dim=sconf.mcep_dim, alpha=sconf.mcep_alpha)
                 npow = feat.npow()
                 codeap = feat.codeap()
@@ -85,8 +89,8 @@ def main(*argv):
                 # save features into a hdf5 file
                 h5 = HDF5(h5f, mode='a')
                 h5.save(f0, ext='f0')
-                # h5.save(spc, ext='spc')
-                # h5.save(ap, ext='ap')
+                h5.save(spc, ext='spc')
+                h5.save(ap, ext='ap')
                 h5.save(mcep, ext='mcep')
                 h5.save(npow, ext='npow')
                 h5.save(codeap, ext='codeap')

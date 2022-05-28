@@ -6,6 +6,10 @@ Estimate joint feature vector of the speaker pair using GMM
 
 """
 
+import pdb
+from matplotlib import pyplot as plt
+from scipy import signal
+
 import argparse
 import os
 import sys
@@ -67,7 +71,6 @@ def get_alignment(odata, onpow, tdata, tnpow, opow=-20, tpow=-20,
         Mel-cepstrum distortion between arrays
 
     """
-
     oexdata = extsddata(odata[:, sd:], onpow,
                         power_threshold=opow)
     texdata = extsddata(tdata[:, sd:], tnpow,
@@ -85,6 +88,10 @@ def get_alignment(odata, onpow, tdata, tnpow, opow=-20, tpow=-20,
                            distance=distance, otflag=otflag)
     else:
         twf = given_twf
+
+    # pdb.set_trace()
+    # plt.plot(twf[0], twf[1])
+    # plt.show()
 
     jdata = align_data(oexdata, texdata, twf)
     mcd = melcd(align_odata[twf[0]], texdata[twf[1]])
@@ -140,7 +147,9 @@ def align_feature_vectors(odata, onpows, tdata, tnpows, pconf,
     for it in range(1, itnum + 1):
         print('{}-th joint feature extraction starts.'.format(it))
         twfs, jfvs = [], []
+
         for i in range(num_files):
+#        for i in range(1):
             if it == 1 and given_twfs is not None:
                 gtwf = given_twfs[i]
             else:
@@ -148,8 +157,12 @@ def align_feature_vectors(odata, onpows, tdata, tnpows, pconf,
             if it > 1:
                 cvdata = cvgmm.convert(static_delta(odata[i][:, sd:]),
                                        cvtype=pconf.GMM_mcep_cvtype)
+
+            filtered_onpow_i = signal.medfilt(onpows[i], 21)
+
             jdata, twf, mcd = get_alignment(odata[i],
-                                            onpows[i],
+#                                            onpows[i],
+                                            filtered_onpow_i,
                                             tdata[i],
                                             tnpows[i],
                                             opow=opow,
@@ -233,8 +246,12 @@ def main(*argv):
     jcodeaps = []
     for i in range(len(org_codeaps)):
         # extract codeap joint feature vector
+
+        filtered_onpow_i = signal.medfilt(org_npows[i], 21)
+
         jcodeap, _, _ = get_alignment(org_codeaps[i],
-                                      org_npows[i],
+                                      # org_npows[i],
+                                      filtered_onpow_i,
                                       tar_codeaps[i],
                                       tar_npows[i],
                                       opow=oconf.power_threshold,
@@ -251,6 +268,26 @@ def main(*argv):
     jnth5.save(jnt_mcep, ext='mcep')
     jnth5.save(jnt_codeap, ext='codeap')
     jnth5.close()
+
+    # save joint feature vectors as separate files.
+    with open(args.org_list_file, 'r') as fp:
+        lines = list(fp)
+        assert len(lines) == len(jmceps)
+        assert len(lines) == len(jcodeaps)
+        for line, mcep, codeap, twf in zip(lines, jmceps, jcodeaps, twfs):
+            f = line.rstrip()
+            f = os.path.basename(f)
+            print(f)
+
+            jntpath = os.path.join(jnt_dir, f + '_jnt.h5')
+
+            jnth5 = HDF5(jntpath, mode='a')
+            jnth5.save(mcep, ext='mcep')
+            jnth5.save(codeap, ext='codeap')
+            jnth5.save(twf, ext='twf')
+            jnth5.close()
+
+
 
     # save twfs
     twf_dir = os.path.join(args.pair_dir, 'twf')

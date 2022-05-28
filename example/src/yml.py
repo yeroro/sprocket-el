@@ -23,6 +23,16 @@ class SpeakerYML(object):
         assert self.f0_minf0 < self.f0_maxf0, \
             "should be minf0 < maxf0 in yml file"
 
+        if 'fake' in conf['f0']:
+          self.f0_fake = float(conf['f0']['fake'])
+        else:
+          self.f0_fake = None
+
+        if 'med_filter_kernel' in conf['f0']:
+          self.med_filter_kernel = int(conf['f0']['med_filter_kernel'])
+        else:
+          self.med_filter_kernel = 0
+
         self.mcep_dim = int(conf['mcep']['dim'])
         self.mcep_alpha = float(conf['mcep']['alpha'])
         self.power_threshold = float(conf['power']['threshold'])
