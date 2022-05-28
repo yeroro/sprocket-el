@@ -1,82 +1,52 @@
-[![Python Version](https://img.shields.io/badge/Python-3.5%2C%203.6%2C%203.7-green.svg)](https://img.shields.io/badge/Python-3.5%2C%203.6%2C%203.7-green.svg)
-[![Build Status](https://www.travis-ci.org/k2kobayashi/sprocket.svg?branch=travis)](https://www.travis-ci.org/k2kobayashi/sprocket)
-[![Coverage Status](https://coveralls.io/repos/github/k2kobayashi/sprocket/badge.svg?branch=master)](https://coveralls.io/github/k2kobayashi/sprocket?branch=master)
-[![PyPI version](https://badge.fury.io/py/sprocket-vc.svg)](https://badge.fury.io/py/sprocket-vc)
-[![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
-
-sprocket
+sprocket-el
 ======
+Fork of sprocket speicialized in aligning normal and electrolarynx speech.
 
 
-Voice conversion software - Voice conversion (VC) is a technique to convert a speaker identity of a source speaker into that of a target speaker. This software enables the users to develop a traditional VC system based on a Gaussian mixture model (GMM) and a vocoder-free VC system based on a differential GMM (DIFFGMM) using a parallel dataset of the source and target speakers.
 
-## Paper and slide
-- K. Kobayashi, T. Toda, "sprocket: Open-Source Voice Conversion Software," Proc. Odyssey, pp. 203-210, June 2018.
-[[paper]](https://nuss.nagoya-u.ac.jp/s/h8YKnq6qxjjxtU3)
+## How to run
+1. Prepare wav files. Use `test_prepare_*_files.py` to rename, resample to
+   16 kHz, and copy files from source to the working folder, i.e. under
+   `example/data/wav/`.
+2. Also use `test_cut_wavs.py` and `test_stretch_audio.py` to cut initial
+   transients and pre-stretch WAV fiels if needed.
+3. Run `initialize.py` steps 1, 2, and 3.
+4. Modify the `*.yml` and `*.list` files if needed.
+   - Add `fake` in the YML file if needed.
+   - Use the `f0` and `npow` histograms under `conf/figure` to set reasonable
+     thresholds.
+  - See `example/conf/speaker/nasal_tsai_mhint_20211128_cut[0.10].yml` for an
+    example.
+5. Run `run_sprocket.py` steps 1, 2, 3, and 6. The results will be stored in
+   `example/data/pair/*/aligned/`.
 
-- T. Toda, "Hands on Voice Conversion," Speech Processing Courses in Crete (SPCC), July 2018.
-[[slide]](https://www.slideshare.net/NU_I_TODALAB/hands-on-voice-conversion)
 
-## Conversion samples
-- Voice Conversion Challenge 2018
-	- [HUB Task](https://nuss.nagoya-u.ac.jp/s/3F8dxTcdQdXir9s)
-	- [SPOKE Task](https://nuss.nagoya-u.ac.jp/s/ixwxa6DxYa68y4N)
+## Files
+### Modified files
+- `example/src/yml.py`,
+- `example/src/extract_features.py`,
+- `sprocket/speech/feature_extrator.py`,
+- `sprocket/speech/analyzer.py`: Add the ability to provide fake f0 (e.g.
+    100 Hz electrolarynx excitations) and median-filter the extracted f0
+    by specifying the kernel size.
+- `sprocket/speech/extfrm.py`: Log the number of non-silent frames extracted.
+- `example/src/estimate_twf_and_jnt.py`: Median-filter the power and also
+    save the joint feature vectors in the HDF5 file format. Useful for
+    outputting the aligned WAV files.
+- `example/run_sprocket.py`: Add an extra step 6, which outputs the aligned
+    WAV files. Also disable step 4 & 5.
 
-## Purpose
-### Reproduce the typical VC systems
+### Added files
+- `example/file_utils.py`: Add utilites to rename and resample files. Used by
+    `test_prepare_{nasal, normal}_files.py`
+- `example/src/output_aligned.py`: Take the results of sprocket step 3
+    (aligning) and resynthesize aligned WAVs. Used in sprocket step 6.
 
-This software was developed to make it possible for the users to easily build the VC systems by only preparing a parallel dataset of the desired source and target speakers and executing example scripts.
-The following VC methods were implemented as the typical VC methods.
-
-#### Traditional VC method based on GMM
-- T. Toda, A.W. Black, K. Tokuda, "Voice conversion based on maximum likelihood estimation of spectral parameter trajectory," IEEE Transactions on Audio, Speech and Language Processing, Vol. 15, No. 8, pp. 2222-2235, Nov. 2007.
-
-#### Vocoder-free VC method based on DIFFGMM
-- K. Kobayashi, T. Toda, S. Nakamura, "F0 transformation techniques for statistical voice conversion with direct waveform modification with spectral differential," Proc. IEEE SLT, pp. 693-700, Dec. 2016.
-
-### Supply Python3 VC library
-To make it possible to easily develop VC-based applications using Python (Python3), the VC library is also supplied, including several interfaces, such as acoustic feature analysis/synthesis, acoustic feature modeling, acoustic feature conversion, and waveform modification.
-For the details of the VC library, please see sprocket documents in (coming soon).
-
-## Installation & Run
-
-Please use Python3.
-
-### Current stable version
-
-Ver. 0.18.4
-
-### Install sprocket
-
-```
-pip install numpy==1.15.4 cython  # for dependency
-pip install sprocket-vc
-```
-
-### Run example
-
-See [VC example](docs/vc_example.md)
-
-## REPORTING BUGS
-
-For any questions or issues please visit:
-
-```
-https://github.com/k2kobayashi/sprocket/issues
-```
-
-## COPYRIGHT
-
-Copyright (c) 2020 Kazuhiro KOBAYASHI
-
-Released under the MIT license
-
-[https://opensource.org/licenses/mit-license.php](https://opensource.org/licenses/mit-license.php)
-
-## ACKNOWLEDGEMENTS
-Thank you [@r9y9](https://github.com/r9y9) and [@tats-u](https://github.com/tats-u) for lots of contributions and encouragement helps before release.
-
-## Who we are
-- Kazuhiro Kobayashi [@k2kobayashi](https://github.com/k2kobayashi) [maintainer, design and development]
-
-- [Tomoki Toda](https://sites.google.com/site/tomokitoda/) [advisor]
+### Scripts
+- `example/test_prepare_{nasal, normal}_files.py`: Prepare nasal and normal
+    files.
+- `example/test_stretch_audio.py`: Pre-stretch faster speech files (usually
+    normal speech) to roughly match the slower ones. This depends on the
+    `pysox` package.
+- `example/test_cut_wavs.py`: Cut the initial part of WAV files; useful to
+    remove the initial transients.
